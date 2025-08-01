@@ -1,6 +1,6 @@
-// import {useState} from "react";
-// import reactLogo from "./assets/react.svg";
-// import {invoke} from "@tauri-apps/api/core";
+import React from 'react';
+import {Input} from "@/components/ui/input";
+import {cn} from "@/lib/utils"
 import "./App.css";
 
 function App() {
@@ -13,19 +13,27 @@ function App() {
     // }
 
     return (
-        <div
-            data-tauri-drag-region
-            style={{
-                backgroundColor: "red",
-            }}
-        >
-            <input
-                onChange={async (_e) => {
-                    // setQuery(e.target.value)
-                }}
-                placeholder="Search for apps and commands..."
-            />
-        </div>
+        <React.Fragment >
+            <div
+                data-tauri-drag-region
+                className={cn(
+                    "flex justify-between items-center",
+                    "p-2 pl-0",
+                )}
+            >
+                <Input
+                    autoFocus={true}
+                    className={cn(
+                        "w-1/2 h-10 p-0 pl-2 ml-2",
+                        "text-foreground",
+                        "outline-none shadow-none border-none",
+                    )}
+                    onChange={async (_e) => {
+                    }}
+                    placeholder="Search for apps and commands..."
+                />
+            </div>
+        </React.Fragment>
     );
 }
 
