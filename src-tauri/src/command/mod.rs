@@ -1,5 +1,5 @@
-use tauri_plugin_shell::ShellExt;
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
 pub async fn open_url(app_handle: tauri::AppHandle, command: String) -> Result<String, String> {
@@ -39,7 +39,6 @@ pub async fn open_url(app_handle: tauri::AppHandle, command: String) -> Result<S
         _ => Err(format!("Unknown command: {}", cmd)),
     }
 }
-
 
 #[tauri::command]
 pub async fn execute_shell(

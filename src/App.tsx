@@ -8,57 +8,92 @@ import {Separator} from "@/components/ui/separator";
 import {Button} from "@/components/ui/button";
 import {Tooltip, TooltipTrigger, TooltipContent} from "@/components/ui/tooltip";
 
-// 模拟命令数据
-const availableCommands = [
-    {id: '1', title: 'Open Google', command: '>google', description: 'Opens Google.com in your default browser.'},
-    {id: '2', title: 'Search on Wikipedia', command: '>wiki', description: 'Search on Wikipedia for a given term.'},
-];
-
 function App() {
+    const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<any[]>([]);
-    const [isCommandMode, setIsCommandMode] = useState(false);
+    const [results, setResults] = useState<{
+        id: string;
+        title: string;
+        description: string;
+    }[]>([]);
+
 
     useEffect(() => {
-        // 检查是否进入命令模式
-        setIsCommandMode(query.startsWith('>'));
+        // 启动时加载插件
+        const loadAllPlugins = async () => {
+            try {
+                const loadedPlugins: PluginInfo[] = await invoke('load_plugins');
+                setPlugins(loadedPlugins);
+                console.log("Plugins loaded:", loadedPlugins);
+            } catch (error) {
+                console.error("Failed to load plugins:", error);
+            }
+        };
+        loadAllPlugins();
+    }, []);
 
-        if (isCommandMode) {
-            // 过滤命令
+    useEffect(() => {
+        if (query.startsWith('>')) {
             const searchTerm = query.substring(1).toLowerCase();
-            const filteredCommands = availableCommands.filter(cmd =>
-                cmd.title.toLowerCase().includes(searchTerm) || cmd.command.toLowerCase().includes(searchTerm)
+            // 过滤插件命令
+            const filteredPlugins = plugins.filter(plugin =>
+                plugin.name.toLowerCase().includes(searchTerm) ||
+                plugin.command.toLowerCase().includes(searchTerm)
             );
-            setResults(filteredCommands);
+            setResults(filteredPlugins.map(p => ({
+                id: p.command,
+                title: p.name,
+                description: p.description
+            })));
         } else if (query.length > 0) {
             // 模拟普通搜索结果
-            const fakeResults = [
-                {id: '3', title: `Search for "${query}"`, description: 'Execute a web search.'},
-            ];
-            setResults(fakeResults);
+            setResults([{ id: 'search', title: `Search for "${query}"`, description: 'Execute a web search.' }]);
         } else {
-            setResults([]);
+            // 当输入为空时，显示所有可用插件作为“建议”
+            setResults(plugins.map(p => ({
+                id: p.command,
+                title: p.name,
+                description: p.description
+            })));
         }
-    }, [query, isCommandMode]);
+    }, [query, plugins]);
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            if (isCommandMode) {
-                openURL(query);
-            } else {
-                // 执行普通搜索
-                console.log(`Executing web search for: ${query}`);
-            }
+    const runPluginCommand = async (commandName: string) => {
+        try {
+            const response = await invoke<string>('run_plugin_command', { commandName });
+            console.log('Plugin command executed:', response);
+            return response;
+        } catch (error) {
+            console.error('Failed to run plugin command:', error);
         }
     };
 
-    const openURL = async (command: string) => {
+    const executeBuiltinCommand = async (command: string) => {
         // 调用 Tauri 后端，传入完整的命令字符串
         try {
             const response = await invoke('open_url', {command: command});
             console.log('Command executed successfully:', response);
         } catch (error) {
             console.error('Failed to execute command:', error);
+        }
+    };
+
+    // 当用户按下 Enter 键时执行命令
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const commandToRun = query.startsWith('>') ? query.substring(1) : query;
+            // 尝试匹配插件命令
+            console.log("commandToRun: ", commandToRun);
+            const matchedPlugin = plugins.find(p => p.command === commandToRun);
+            if (matchedPlugin) {
+                runPluginCommand(matchedPlugin.command).then((r)=>{
+                    console.log(r)
+                });
+            } else {
+                // 执行普通的搜索或命令
+                executeBuiltinCommand(query);
+            }
         }
     };
 
