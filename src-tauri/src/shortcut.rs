@@ -12,11 +12,15 @@ pub fn init(app: &tauri::App) -> Result<(), tauri::Error> {
                     main_window.hide().unwrap();
                 } else {
                     main_window.show().unwrap();
+                    if !main_window.is_always_on_top().unwrap(){
+                        main_window.set_always_on_top(true).unwrap();
+                    }
                     main_window.set_focus().unwrap();
                 }
             }
         })
         .unwrap();
+    // TODO 窗口快捷键 ESC
 
     Ok(())
 }

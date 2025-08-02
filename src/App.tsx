@@ -1,4 +1,6 @@
 import React, {useEffect, useState} from 'react';
+import {useVirtualizer} from '@tanstack/react-virtual';
+
 import {invoke} from "@tauri-apps/api/core";
 
 import {cn} from "@/lib/utils"
@@ -12,11 +14,18 @@ function App() {
     const [plugins, setPlugins] = useState<PluginInfo[]>([]);
 
     const [query, setQuery] = useState("");
+
+    const parentRef = React.useRef(null)
     const [results, setResults] = useState<{
         id: string;
         title: string;
         description: string;
     }[]>([]);
+    const rowVirtualizer = useVirtualizer({
+        count: results.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: () => 35,
+    })
 
 
     useEffect(() => {
@@ -41,6 +50,7 @@ function App() {
                 plugin.name.toLowerCase().includes(searchTerm) ||
                 plugin.command.toLowerCase().includes(searchTerm)
             );
+            console.log(filteredPlugins)
             setResults(filteredPlugins.map(p => ({
                 id: p.command,
                 title: p.name,
@@ -48,7 +58,7 @@ function App() {
             })));
         } else if (query.length > 0) {
             // 模拟普通搜索结果
-            setResults([{ id: 'search', title: `Search for "${query}"`, description: 'Execute a web search.' }]);
+            setResults([{id: 'search', title: `Search for "${query}"`, description: 'Execute a web search.'}]);
         } else {
             // 当输入为空时，显示所有可用插件作为“建议”
             setResults(plugins.map(p => ({
@@ -61,7 +71,7 @@ function App() {
 
     const runPluginCommand = async (commandName: string) => {
         try {
-            const response = await invoke<string>('run_plugin_command', { commandName });
+            const response = await invoke<string>('run_plugin_command', {commandName});
             console.log('Plugin command executed:', response);
             return response;
         } catch (error) {
@@ -87,7 +97,7 @@ function App() {
             console.log("commandToRun: ", commandToRun);
             const matchedPlugin = plugins.find(p => p.command === commandToRun);
             if (matchedPlugin) {
-                runPluginCommand(matchedPlugin.command).then((r)=>{
+                runPluginCommand(matchedPlugin.command).then((r) => {
                     console.log(r)
                 });
             } else {
@@ -123,23 +133,50 @@ function App() {
             <div className="flex justify-center">
                 <Separator className="w-full bg-gray-500 dark:bg-gray-50 h-[1px]"/>
             </div>
-            <div className="w-1/3 flex flex-col">
-                {results.length > 0 &&
-                    results.map((cmd) => (
-                        <Tooltip key={cmd.id} >
-                            <TooltipTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={cn("shadow-none")}
-                                >
-                                    {cmd.title}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{cmd.description}</p>
-                            </TooltipContent>
-                        </Tooltip>
+            <div
+                ref={parentRef}
+                style={{
+                    height: `400px`,
+                    overflow: 'auto', // Make it scroll!
+                }}
+            >
+                {/* The large inner element to hold all of the items */}
+                <div
+                    style={{
+                        height: `${rowVirtualizer.getTotalSize()}px`,
+                        width: '100%',
+                        position: 'relative',
+                    }}
+                >
+                    {/* Only the visible items in the virtualizer, manually positioned to be in view */}
+                    {rowVirtualizer.getVirtualItems().map((virtualItem) => (
+                        <div
+                            key={virtualItem.key}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: `${virtualItem.size}px`,
+                                transform: `translateY(${virtualItem.start}px)`,
+                            }}
+                        >
+                            <Tooltip key={results[virtualItem.index].id}>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={cn("shadow-none")}
+                                    >
+                                        {results[virtualItem.index].title}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{results[virtualItem.index].description}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </div>
                     ))}
+                </div>
             </div>
         </React.Fragment>
     );
